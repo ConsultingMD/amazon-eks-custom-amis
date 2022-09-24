@@ -16,6 +16,24 @@ variable "root_volume_size" {
   default     = 10
 }
 
+variable "encrypt_boot" {
+  description = "Whether or not to encrypt the resulting AMI when copying a provisioned instance to an AMI."
+  type        = bool
+  default     = false
+}
+
+variable "kms_key_id" {
+  description = "ID, alias or ARN of the KMS key to use for AMI encryption. This only applies to the main."
+  type        = string
+  default     = null
+}
+
+variable "region_kms_key_ids" {
+  description = "Regions to copy the ami to, along with the custom kms key id (alias or arn) to use for encryption for that region."
+  type        = map(string)
+  default     = null
+}
+
 variable "eks_version" {
   description = "The EKS cluster version associated with the AMI created"
   type        = string
@@ -80,4 +98,53 @@ variable "ami_name_prefix" {
   description = "The prefix to use when creating the AMI name. i.e. - `<ami_name_prefix>-<eks_version>-<timestamp>"
   type        = string
   default     = "amazon-eks-node"
+}
+
+variable "associate_public_ip_address" {
+  description = "If using a non-default VPC, public IP addresses are not provided by default. If this is true, your new instance will get a Public IP."
+  type        = bool
+  default     = false
+}
+
+
+variable "temporary_security_group_source_cidrs" {
+  description = "A list of IPv4 CIDR blocks to be authorized access to the instance, when packer is creating a temporary security group."
+  type        = list(string)
+  default     = []
+}
+
+variable "temporary_security_group_source_public_ip" {
+  description = "When enabled, use public IP of the host (obtained from https://checkip.amazonaws.com) as IPv4 CIDR block to be authorized access to the instance, when packer is creating a temporary security group"
+  type        = bool
+  default     = false
+}
+
+variable "ssh_interface" {
+  description = "If set, either the public IP address, private IP address, public DNS name or private DNS name will be used as the host for SSH. The default behaviour if inside a VPC is to use the public IP address if available, otherwise the private IP address will be used. If not in a VPC the public DNS name will be used."
+  type        = string
+  default     = "private_ip"
+}
+
+variable "ami_regions" {
+  description = "A list of regions to copy the AMI to. Tags and attributes are copied along with the AMI. AMI copying takes time depending on the size of the AMI, but will generally take many minutes."
+  type        = list(string)
+  default     = []
+}
+
+variable "ami_org_arns" {
+  description = "A list of Amazon Resource Names (ARN) of AWS Organizations that have access to launch the resulting AMI(s)."
+  type        = list(string)
+  default     = []
+}
+
+variable "ami_users" {
+  description = "A list of account IDs that have access to launch the resulting AMI(s). By default no additional users other than the user creating the AMI has permissions to launch it."
+  type        = list(string)
+  default     = []
+}
+
+variable "snapshot_users" {
+  description = "A list of account IDs that have access to create volumes from the snapshot(s)."
+  type        = list(string)
+  default     = []
 }
