@@ -1,7 +1,7 @@
 locals {
   timestamp = regex_replace(timestamp(), "[- TZ:]", "")
 
-  target_ami_name = "${var.ami_name_prefix}-${var.eks_version}-${local.timestamp}"
+  target_ami_name = "${var.ami_name_prefix}-${var.eks_version}-v${local.timestamp}"
 }
 
 data "amazon-ami" "this" {
@@ -27,6 +27,7 @@ source "amazon-ebs" "this" {
     device_name           = "/dev/sdb"
     volume_size           = var.data_volume_size
     volume_type           = "gp2"
+    encrypted             = true
   }
 
   ami_description         = "EKS Kubernetes Worker AMI with AmazonLinux2 image"
@@ -36,9 +37,11 @@ source "amazon-ebs" "this" {
 
   launch_block_device_mappings {
     delete_on_termination = true
-    device_name           = "/dev/sda1"
+    device_name           = "/dev/xvda"
     volume_size           = var.root_volume_size
     volume_type           = "gp2"
+    encrypted             = true
+    kms_key_id            = var.kms_key_id
   }
 
   launch_block_device_mappings {
@@ -46,7 +49,12 @@ source "amazon-ebs" "this" {
     device_name           = "/dev/sdb"
     volume_size           = var.data_volume_size
     volume_type           = "gp2"
+    encrypted             = true
+    kms_key_id            = var.kms_key_id
   }
+
+  encrypt_boot = var.encrypt_boot
+  kms_key_id   = var.kms_key_id
 
   region = var.aws_region
 
@@ -54,10 +62,22 @@ source "amazon-ebs" "this" {
     Name = local.target_ami_name
   }
 
-  source_ami   = data.amazon-ami.this.id
-  ssh_pty      = true
-  ssh_username = var.source_ami_ssh_user
-  subnet_id    = var.subnet_id
+  source_ami = data.amazon-ami.this.id
+
+  subnet_id     = var.subnet_id
+  ssh_pty       = true
+  ssh_interface = var.ssh_interface
+  ssh_username  = var.source_ami_ssh_user
+
+  associate_public_ip_address               = var.associate_public_ip_address
+  temporary_security_group_source_cidrs     = var.temporary_security_group_source_cidrs
+  temporary_security_group_source_public_ip = var.temporary_security_group_source_public_ip
+
+  ami_regions        = var.ami_regions
+  region_kms_key_ids = var.region_kms_key_ids
+  ami_org_arns       = var.ami_org_arns
+  ami_users          = var.ami_users
+  snapshot_users     = var.snapshot_users
 
   tags = {
     os_version        = "Amazon Linux 2"
