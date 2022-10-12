@@ -123,6 +123,13 @@ build {
   }
 
   provisioner "shell" {
+    execute_command   = "echo 'packer' | {{ .Vars }} sudo -S -E bash -eux '{{ .Path }}'"
+    expect_disconnect = true
+    pause_after       = "15s"
+    script            = "scripts/kernel.sh"
+  }
+
+  provisioner "shell" {
     execute_command = "echo 'packer' | {{ .Vars }} sudo -S -E bash -eux '{{ .Path }}'"
     environment_vars = [
       "HTTP_PROXY=${var.http_proxy}",
