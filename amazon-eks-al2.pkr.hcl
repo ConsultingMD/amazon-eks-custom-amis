@@ -149,6 +149,10 @@ build {
   provisioner "shell" {
     execute_command = "echo 'packer' | {{ .Vars }} sudo -S -E bash -eux '{{ .Path }}'"
 
+    env = {
+      MOTD_CONTENT = var.motd_content
+    }
+
     scripts = [
       "scripts/cis-benchmark.sh",
       "scripts/cis-docker.sh",
