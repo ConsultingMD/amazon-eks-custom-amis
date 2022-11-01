@@ -49,32 +49,27 @@ echo "2.1 - 2.17 - ensure the docker configuration is secure"
 cat > /etc/docker/daemon.json <<EOF
 {
   "bridge": "none",
-  "log-level": "info",
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "10m",
-    "max-file": "5"
-  },
-  "icc": false,
-  "iptables": true,
-  "storage-driver": "overlay2",
-  "default-ulimits": {
-    "nofile": {
-      "Name": "nofile",
-      "Hard": 200,
-      "Soft": 100
-    },
-    "nofile": {
-      "Name": "nproc",
-      "Hard": 2048,
-      "Soft": 1024
-    }
+    "max-file": "10"
   },
   "live-restore": true,
-  "userland-proxy": false,
   "max-concurrent-downloads": 10,
-  "experimental": false,
-  "insecure-registries": [],
+  "default-ulimits": {
+    "memlock": {
+      "Name": "memlock",
+      "Soft": -1,
+      "Hard": -1
+    },
+    "nproc": {
+      "Name": "nproc",
+      "Hard": 32768,
+      "Soft": 16384
+    }
+  },
+  "icc": false,
+  "userland-proxy": false,
   "no-new-privileges": true
 }
 EOF
