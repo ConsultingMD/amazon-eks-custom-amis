@@ -1,9 +1,3 @@
-locals {
-  timestamp = regex_replace(timestamp(), "[- TZ:]", "")
-
-  target_ami_name = "${var.ami_name_prefix}-${var.eks_version}-v${local.timestamp}"
-}
-
 data "amazon-ami" "this" {
   filters = {
     architecture        = var.source_ami_arch
@@ -21,36 +15,68 @@ data "amazon-ami" "this" {
   region = var.aws_region
 }
 
-source "amazon-ebs" "this" {
-  ami_block_device_mappings {
-    delete_on_termination = true
-    device_name           = "/dev/sdb"
-    volume_size           = var.data_volume_size
-    volume_type           = "gp2"
-    encrypted             = true
-  }
+locals {
+  timestamp = regex_replace(timestamp(), "[- TZ:]", "")
 
+  target_ami_name = "${var.ami_name_prefix}-${var.eks_version}-v${local.timestamp}"
+
+  block_device_mappings = {
+    "/" = {
+      device_name = "/dev/xvda"
+      volume_size = var.root_volume_size
+    }
+    "/home" = {
+      device_name = "/dev/sdf"
+      volume_size = var.home_volume_size
+    }
+    "/var" = {
+      device_name = "/dev/sdg"
+      volume_size = var.var_volume_size
+    }
+    "/var/log" = {
+      device_name = "/dev/sdh"
+      volume_size = var.varlog_volume_size
+    }
+    "/var/log/audit" = {
+      device_name = "/dev/sdi"
+      volume_size = var.varlogaudit_volume_size
+    }
+    "/var/lib/containerd" = {
+      device_name = "/dev/sdj"
+      volume_size = var.varlibcontainerd_volume_size
+    }
+  }
+}
+
+source "amazon-ebs" "this" {
   ami_description         = "EKS Kubernetes Worker AMI with AmazonLinux2 image"
   ami_name                = local.target_ami_name
   ami_virtualization_type = "hvm"
   instance_type           = var.instance_type
 
-  launch_block_device_mappings {
-    delete_on_termination = true
-    device_name           = "/dev/xvda"
-    volume_size           = var.root_volume_size
-    volume_type           = "gp2"
-    encrypted             = true
-    kms_key_id            = var.kms_key_id
+  dynamic "ami_block_device_mappings" {
+    for_each = local.block_device_mappings
+
+    content {
+      device_name           = ami_block_device_mappings.value.device_name
+      volume_size           = ami_block_device_mappings.value.volume_size
+      delete_on_termination = true
+      volume_type           = "gp3"
+      encrypted             = true
+    }
   }
 
-  launch_block_device_mappings {
-    delete_on_termination = true
-    device_name           = "/dev/sdb"
-    volume_size           = var.data_volume_size
-    volume_type           = "gp2"
-    encrypted             = true
-    kms_key_id            = var.kms_key_id
+  dynamic "launch_block_device_mappings" {
+    for_each = local.block_device_mappings
+
+    content {
+      device_name           = launch_block_device_mappings.value.device_name
+      volume_size           = launch_block_device_mappings.value.volume_size
+      delete_on_termination = true
+      volume_type           = "gp3"
+      encrypted             = true
+      kms_key_id            = var.kms_key_id
+    }
   }
 
   encrypt_boot = var.encrypt_boot

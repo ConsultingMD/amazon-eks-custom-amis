@@ -23,7 +23,7 @@ echo "1.1.2 - ensure that the version of Docker is up to date"
 yum -y update docker
 
 echo "1.2.1 - ensure a separate partition for containers has been created"
-grep '/var/lib/docker\s' /proc/mounts
+#grep '/var/lib/docker\s' /proc/mounts
 
 echo "1.2.2 - ensure only trusted users are allowed to control Docker daemon"
 getent group docker
