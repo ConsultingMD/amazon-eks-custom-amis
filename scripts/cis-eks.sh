@@ -58,10 +58,31 @@ cat > /etc/kubernetes/kubelet/kubelet-config.json <<EOF
   "protectKernelDefaults": true,
   "serializeImagePulls": false,
   "serverTLSBootstrap": true,
-  "streamingConnectionIdleTimeout": "4h0m0s",
-  "makeIPTablesUtilChains": true,
-  "eventRecordQPS": 5,
-  "RotateCertificate": true,
-  "tlsCipherSuites": ["TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305", "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305", "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384", "TLS_RSA_WITH_AES_256_GCM_SHA384", "TLS_RSA_WITH_AES_128_GCM_SHA256"]
+  "rotateCertificates": false,
+  "tlsCipherSuites": [
+    "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+    "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
+    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+    "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
+    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+    "TLS_RSA_WITH_AES_256_GCM_SHA384",
+    "TLS_RSA_WITH_AES_128_GCM_SHA256"
+  ],
+  "clusterDNS": [
+    "172.20.0.10"
+  ]
 }
 EOF
+
+# /usr/bin/kubelet --version
+#   Kubernetes v1.20.15-eks-ba74326
+#   -> 1.20
+KUBERNETES_VERSION=$(/usr/bin/kubelet --version | sed -E -e 's!^Kubernetes v([0-9]\.[0-9]+).[0-9]+-.*$!\1!')
+
+# Inject CSIServiceAccountToken feature gate to kubelet config if kubernetes version starts with 1.20.
+# This is only injected for 1.20 since CSIServiceAccountToken will be moved to beta starting 1.21.
+if [[ $KUBERNETES_VERSION == "1.20" ]]; then
+    KUBELET_CONFIG_WITH_CSI_SERVICE_ACCOUNT_TOKEN_ENABLED=$(cat "/etc/kubernetes/kubelet/kubelet-config.json" | jq '.featureGates += {CSIServiceAccountToken: true}')
+    echo $KUBELET_CONFIG_WITH_CSI_SERVICE_ACCOUNT_TOKEN_ENABLED > "/etc/kubernetes/kubelet/kubelet-config.json"
+fi
