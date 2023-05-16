@@ -33,7 +33,7 @@ echo "-w /usr/bin/dockerd -k docker" >> /etc/audit/rules.d/docker.rules
 echo "-w /usr/bin/docker -k docker" >> /etc/audit/rules.d/docker.rules
 
 echo "1.2.4 - 1.2.12 - ensure auditing is configured for Docker files and directories"
-echo "-w /var/lib/docker -k docker" >> /etc/audit/rules.d/docker.rules
+#echo "-w /var/lib/docker -k docker" >> /etc/audit/rules.d/docker.rules
 echo "-w /etc/docker -k docker" >> /etc/audit/rules.d/docker.rules
 echo "-w /etc/default/docker -k docker" >> /etc/audit/rules.d/docker.rules
 echo "-w /etc/sysconfig/docker -k docker" >> /etc/audit/rules.d/docker.rules
