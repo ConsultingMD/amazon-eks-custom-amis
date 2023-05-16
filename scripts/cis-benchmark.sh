@@ -300,8 +300,10 @@ echo "2.2.4 - ensure LDAP client is not installed"
 yum_remove openldap-clients
 
 echo "3.1.1 - ensure IP forwarding is disabled"
-sysctl_entry "net.ipv4.ip_forward = 0"
-sysctl_entry "net.ipv6.conf.all.forwarding = 0"
+# Required for working container networking
+# sysctl_entry "net.ipv4.ip_forward = 0"
+# sysctl_entry "net.ipv4.conf.all.forwarding = 0"
+# sysctl_entry "net.ipv6.conf.all.forwarding = 0"
 
 echo "3.1.2 - ensure packet redirect sending is disabled"
 sysctl_entry "net.ipv4.conf.all.send_redirects = 0"
