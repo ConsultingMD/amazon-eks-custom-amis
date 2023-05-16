@@ -62,6 +62,53 @@ migrate_and_mount_disk() {
     fi
 }
 
+################################################################
+# Migrate existing folder to a location
+#
+# Globals:
+#   None
+# Arguments:
+#   1 - the path to mount
+#   2 - the folder path to migration
+#   3 - the mount options to use.
+# Outputs:
+#   None
+################################################################
+migrate_and_bind_dir() {
+    local dest_path=$1
+    local folder_path=$2
+    local mount_options=$3
+    local temp_path="/mnt/binds/${folder_path}"
+
+    # check if the folder already exists
+    if [ -d "${folder_path}" ]; then
+        FILE=$(ls -A ${folder_path})
+        >&2 echo $FILE
+        mkdir -p ${temp_path}
+        # Empty folder give error on /*
+        if [ ! -z "$FILE" ]; then
+            cp -Rax ${folder_path}/* ${temp_path}
+        fi
+    else  # create the folder
+        mkdir -p ${folder_path}
+    fi
+
+    # add the mount point to fstab and mount
+    mkdir -p ${dest_path}
+    echo "${dest_path} ${folder_path} none ${mount_options} 0 0" >> /etc/fstab
+    mount -a
+
+    # check if the folder wasn't empty
+    if [ -d "${temp_path}" ]; then
+        cp -Rax ${temp_path}/* ${dest_path}
+    fi
+
+    # if selinux is enabled restore the objects on it
+    if selinuxenabled; then
+        restorecon -R ${folder_path}
+    fi
+}
+
 # migrate and mount the existing folders to dedicated EBS Volumes
 migrate_and_mount_disk "/dev/sdf" "/home"               defaults,nofail,nodev,nosuid
 migrate_and_mount_disk "/dev/sdg" "/var"                defaults,nofail,nodev
@@ -87,3 +134,6 @@ growpart "/dev/\$(readlink "/dev/sdj")" 1; xfs_growfs '/var/lib/containerd'
 df -Th | grep -E 'Filesystem|xfs'
 EOF
 chmod +x "$cloud_init_script"
+
+# Bind mount /var/lib/kubelet -> /var/lib/containerd/kubelet
+migrate_and_bind_dir "/var/lib/containerd/kubelet" "/var/lib/kubelet" defaults,bind
