@@ -17,21 +17,32 @@ set -o errexit
 #   None
 ################################################################
 migrate_and_mount_disk() {
-    local disk_name=$1
+    local device_name=$1
     local folder_path=$2
     local mount_options=$3
     local temp_path="/mnt${folder_path}"
     local old_path="${folder_path}-old"
 
-    # install an ext4 filesystem to the disk
-    mkfs -t ext4 ${disk_name}
+    # AWS EC2 API Block Device Mapping name to Linux NVME device name
+    disk_name="/dev/$(readlink "$device_name")"
+
+    # partition the disk (single data partition)
+    parted -a optimal -s $disk_name \
+        mklabel gpt \
+        mkpart data xfs 0% 90%
+
+    # wait for the disk to settle
+    sleep 5
+
+    # install an xfs filesystem to the disk
+    mkfs -t xfs "${disk_name}p1"
 
     # check if the folder already exists
     if [ -d "${folder_path}" ]; then
         FILE=$(ls -A ${folder_path})
         >&2 echo $FILE
         mkdir -p ${temp_path}
-        mount ${disk_name} ${temp_path}
+        mount "${disk_name}p1" ${temp_path}
         # Empty folder give error on /*
         if [ ! -z "$FILE" ]; then
             cp -Rax ${folder_path}/* ${temp_path}
@@ -42,7 +53,7 @@ migrate_and_mount_disk() {
     mkdir -p ${folder_path}
 
     # add the mount point to fstab and mount the disk
-    echo "UUID=$(blkid -s UUID -o value ${disk_name}) ${folder_path} ext4 ${mount_options} 0 1" >> /etc/fstab
+    echo "UUID=$(blkid -s UUID -o value "${disk_name}p1") ${folder_path} xfs ${mount_options} 0 1" >> /etc/fstab
     mount -a
 
     # if selinux is enabled restore the objects on it
@@ -51,27 +62,28 @@ migrate_and_mount_disk() {
     fi
 }
 
-disk_name='/dev/nvme1n1'
+# migrate and mount the existing folders to dedicated EBS Volumes
+migrate_and_mount_disk "/dev/sdf" "/home"               defaults,nofail,nodev,nosuid
+migrate_and_mount_disk "/dev/sdg" "/var"                defaults,nofail,nodev
+migrate_and_mount_disk "/dev/sdh" "/var/log"            defaults,nofail,nodev,nosuid
+migrate_and_mount_disk "/dev/sdi" "/var/log/audit"      defaults,nofail,nodev,nosuid
+migrate_and_mount_disk "/dev/sdj" "/var/lib/containerd" defaults,nofail
 
-# partition the disk
-parted -a optimal -s $disk_name \
-    mklabel gpt \
-    mkpart var ext4 0% 20% \
-    mkpart varlog ext4 20% 40% \
-    mkpart varlogaudit ext4 40% 60% \
-    mkpart home ext4 60% 70% \
-    mkpart varlibdocker ext4 70% 90%
+# Resize on instance launch
+cloud_init_script="/var/lib/cloud/scripts/per-boot/resize-disks.sh"
+cat > "$cloud_init_script" <<EOF
+#!/usr/bin/env bash
 
-# wait for the disks to settle
-sleep 5
+set -x
 
-# migrate and mount the existing
-migrate_and_mount_disk "${disk_name}p1" /var            defaults,nofail,nodev
-migrate_and_mount_disk "${disk_name}p2" /var/log        defaults,nofail,nodev,nosuid
-migrate_and_mount_disk "${disk_name}p3" /var/log/audit  defaults,nofail,nodev,nosuid
-migrate_and_mount_disk "${disk_name}p4" /home           defaults,nofail,nodev,nosuid
+lsblk
 
-# Create folder instead of starting/stopping docker daemon
-mkdir -p /var/lib/docker
-chown -R root:docker /var/lib/docker
-migrate_and_mount_disk "${disk_name}p5" /var/lib/docker defaults,nofail
+growpart "/dev/\$(readlink "/dev/sdf")" 1; xfs_growfs '/home'
+growpart "/dev/\$(readlink "/dev/sdg")" 1; xfs_growfs '/var'
+growpart "/dev/\$(readlink "/dev/sdh")" 1; xfs_growfs '/var/log'
+growpart "/dev/\$(readlink "/dev/sdi")" 1; xfs_growfs '/var/log/audit'
+growpart "/dev/\$(readlink "/dev/sdj")" 1; xfs_growfs '/var/lib/containerd'
+
+df -Th | grep -E 'Filesystem|xfs'
+EOF
+chmod +x "$cloud_init_script"

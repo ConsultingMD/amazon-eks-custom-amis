@@ -4,14 +4,44 @@ variable "aws_region" {
   default     = "us-west-2"
 }
 
-variable "data_volume_size" {
-  description = "Size of the AMI data EBS volume"
-  type        = number
-  default     = 50
+variable "eks_version" {
+  description = "The EKS cluster version associated with the AMI created"
+  type        = string
+  default     = "1.22"
 }
 
 variable "root_volume_size" {
   description = "Size of the AMI root EBS volume"
+  type        = number
+  default     = 4
+}
+
+variable "home_volume_size" {
+  description = "Size of the AMI /home EBS volume"
+  type        = number
+  default     = 1
+}
+
+variable "var_volume_size" {
+  description = "Size of the AMI /var EBS volume"
+  type        = number
+  default     = 4
+}
+
+variable "varlog_volume_size" {
+  description = "Size of the AMI /var/log EBS volume"
+  type        = number
+  default     = 1
+}
+
+variable "varlogaudit_volume_size" {
+  description = "Size of the AMI /var/log/audit EBS volume"
+  type        = number
+  default     = 1
+}
+
+variable "varlibcontainerd_volume_size" {
+  description = "Size of the AMI /var/lib/containerd EBS volume"
   type        = number
   default     = 10
 }
@@ -32,12 +62,6 @@ variable "region_kms_key_ids" {
   description = "Regions to copy the ami to, along with the custom kms key id (alias or arn) to use for encryption for that region."
   type        = map(string)
   default     = null
-}
-
-variable "eks_version" {
-  description = "The EKS cluster version associated with the AMI created"
-  type        = string
-  default     = "1.22"
 }
 
 variable "http_proxy" {
