@@ -148,7 +148,6 @@ build {
 
     scripts = [
       "scripts/cis-benchmark.sh",
-      "scripts/cis-docker.sh",
       "scripts/cis-eks.sh",
       "scripts/cleanup.sh",
     ]
